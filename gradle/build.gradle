@@ -1,0 +1,91 @@
+buildscript {
+    repositories {
+        maven { url 'http://lvyue.ncoppo.com:8081/repository/maven-public/' }
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBoot_version}")
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'war'
+apply plugin: 'eclipse'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+sourceCompatibility = 1.8
+
+repositories {
+    maven { url 'http://lvyue.ncoppo.com:8081/repository/maven-public/' }
+    mavenCentral()
+}
+
+configurations.all {
+    // check for updates every build
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+dependencies {
+    // commons
+    compile("com.oppo.csc:csc-common:${cscCommons_version}")
+
+    // spring-boot
+    compile("org.springframework.boot:spring-boot-starter")
+    compile("org.springframework.boot:spring-boot-starter-web")
+    compile("org.springframework.boot:spring-boot-starter-jdbc")
+    compile("org.springframework.boot:spring-boot-starter-actuator")
+    compile("org.springframework.boot:spring-boot-starter-test")
+    compile("org.springframework.boot:spring-boot-starter-cache")
+    compile("org.springframework.boot:spring-boot-starter-aop")
+    // spring-cloud
+    compile("org.springframework.cloud:spring-cloud-starter")
+
+    // mysql driver
+    compile('mysql:mysql-connector-java')
+    compile('com.squareup.okhttp3:okhttp:3.14.2')
+    compile('com.github.ben-manes.caffeine:caffeine:2.6.2')
+    compile('org.apache.commons:commons-lang3:3.9')
+    compile('com.oracle:oracle-ojdbc7:12.1.0.2')
+    compile('org.apache.poi:poi:4.1.0')
+    compile('org.apache.poi:poi-ooxml:4.1.0')
+    compile('com.belerweb:pinyin4j:2.5.1')
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${spring_cloud_release_train_version}"
+    }
+    resolutionStrategy {
+        cacheChangingModulesFor 0, 'seconds'
+    }
+}
+
+bootJar {
+    launchScript()
+}
+
+task zip(type: Zip, dependsOn: bootJar) {
+    def fileName = "${jar.baseName}-${jar.version}"
+    into('bin') {
+        from file("$projectDir/start")
+        include "start.sh"
+    }
+    into('lib') {
+        from file("$buildDir/libs")
+        include "${fileName}.jar"
+    }
+    archiveName "${fileName}.zip"
+}
+build.dependsOn(zip)
+
+
+// 删除idea编译的目录
+task cleanOut() {
+    dependsOn 'clean'
+
+    File outFile = new File(rootDir.getAbsolutePath() + File.separator + "out")
+    if (outFile.exists()) {
+        outFile.deleteDir()
+    }
+}
