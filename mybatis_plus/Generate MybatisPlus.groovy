@@ -13,11 +13,11 @@ import com.intellij.database.util.DasUtil
 /* 包名，也可以直接修改生成的 Java 文件 */
 packageName = "com.sample;"
 typeMapping = [
-        (~/(?i)int/)                      : "long",
+        (~/(?i)int/)                      : "Integer",
         (~/(?i)float|double|decimal|real/): "double",
-        (~/(?i)datetime|timestamp/)       : "java.sql.Timestamp",
-        (~/(?i)date/)                     : "java.sql.Date",
-        (~/(?i)time/)                     : "java.sql.Time",
+        (~/(?i)datetime|timestamp/)       : "LocalDateTime",
+        (~/(?i)date/)                     : "LocalDate",
+        (~/(?i)time/)                     : "LocalDateTime",
         (~/(?i)/)                         : "String"
 ]
 
@@ -35,17 +35,28 @@ def generate(out, table, className, fields) {
     out.println "package $packageName"
     /* 可在此添加需要导入的包名，也可通过 IDE 批量修改生成的 Java 文件 */
     out.println ""
+    out.println "import com.baomidou.mybatisplus.annotation.*;"
+    out.println "import io.swagger.annotations.ApiModel;"
+    out.println "import io.swagger.annotations.ApiModelProperty;"
     out.println ""
-    out.println "@Table(\"${table.getName()}\")"
-    out.println "@Table(\"${table.getName()}\")"
+    out.println "/** * @author jason */"
+    out.println "@ApiModel(value = \"${table.getComment()}\")"
+    out.println "@TableName(value = \"${table.getName()}\")"
     out.println "public class $className {"
     out.println ""
     fields.each() {
-        out.println ""
+        out.println "/** * ${it.comment} */"
         if (it.annos != "") out.println "  ${it.annos}"
-//        out.println "  @Column(\"${it.col}\")"
         out.println "  private ${it.type} ${it.name};"
+        out.println ""
     }
+
+    out.println ""
+    fields.each() {
+        out.println "public static final String COL_${it.uppercol} = \"${it.name}\" ;"
+        out.println ""
+    }
+
     out.println ""
     fields.each() {
         out.println ""
@@ -66,11 +77,12 @@ def calcFields(table) {
         def spec = Case.LOWER.apply(col.getDataType().getSpecification())
         def typeStr = typeMapping.find { p, t -> p.matcher(spec).find() }.value
         fields += [[
-                           name   : javaName(col.getName(), false),
-                           type   : typeStr,
-                           col    : col.getName(),
-                           comment: col.getComment(),
-                           annos  : customAnnotation(col)
+                           name    : javaName(col.getName(), false),
+                           type    : typeStr,
+                           col     : col.getName(),
+                           comment : col.getComment(),
+                           annos   : customAnnotation(col),
+                           uppercol: Case.UPPER.apply(col.getName())
                    ]]
     }
 }
@@ -96,6 +108,9 @@ static def customAnnotation(col) {
     }
     if ("version" == col.getName()) {
         return "@TableField(value = \"" + col.getName() + "\") \n  @Version \n @ApiModelProperty(value = \"" + col.getComment() + "\")"
+    }
+    if ("order_no" == col.getName()) {
+        return "@TableField(value = \"" + col.getName() + "\", fill = FieldFill.INSERT) \n  @Version \n @ApiModelProperty(value = \"" + col.getComment() + "\")"
     }
     return "@TableField(value = \"" + col.getName() + "\") \n @ApiModelProperty(value = \"" + col.getComment() + "\")"
 }
